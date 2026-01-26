@@ -41,3 +41,4 @@
 # 코드 리뷰 시 참고한 링크가 있다면 링크와 간략한 설명을 첨부합니다.
 # 코드 리뷰를 통해 개선한 코드가 있다면 코드와 간략한 설명을 첨부합니다.
 ```
+<img width="1224" height="213" alt="image" src="https://github.com/user-attachments/assets/948ae7c4-e862-406e-895d-5e1db07363c1" />
