@@ -1,0 +1,98 @@
+%% GPT-1 vs Transformer 아키텍처 비교 다이어그램
+%% Mermaid 다이어그램 파일
+
+---
+title: Transformer vs GPT-1 아키텍처 비교
+---
+
+flowchart TB
+    subgraph TRANSFORMER["기존 Transformer"]
+        direction TB
+
+        subgraph ENC["Encoder"]
+            E1[Token Embedding] --> E2["Positional Encoding<br/>(sin/cos 고정)"]
+            E2 --> E3[Self-Attention<br/>양방향]
+            E3 --> E4["FFN<br/>(ReLU)"]
+            E4 --> E5[Encoder Output]
+        end
+
+        subgraph DEC["Decoder"]
+            D1[Token Embedding] --> D2["Positional Encoding<br/>(sin/cos 고정)"]
+            D2 --> D3[Masked Self-Attention]
+            D3 --> D4["Cross-Attention<br/>(Encoder 참조)"]
+            D4 --> D5["FFN<br/>(ReLU)"]
+            D5 --> D6[Output]
+        end
+
+        E5 -.->|enc_out| D4
+    end
+
+    subgraph GPT1["GPT-1 (Decoder-only)"]
+        direction TB
+
+        G1[Token Embedding] --> G2["Positional Embedding<br/>(학습 가능)"]
+        G2 --> G3["Masked Self-Attention<br/>(Look-ahead Mask)"]
+        G3 --> G4["FFN<br/>(GELU)"]
+        G4 --> G5{반복 × N}
+        G5 --> G3
+        G5 --> G6[Output]
+
+        note1[/"❌ Encoder 없음<br/>❌ Cross-Attention 없음"/]
+    end
+
+    style TRANSFORMER fill:#ffebee,stroke:#c62828
+    style GPT1 fill:#e8f5e9,stroke:#2e7d32
+    style ENC fill:#fff3e0,stroke:#e65100
+    style DEC fill:#e3f2fd,stroke:#1565c0
+    style note1 fill:#fff9c4,stroke:#f57f17
+
+---
+title: GPT-1 모델 상세 구조
+---
+
+flowchart TB
+    subgraph INPUT["입력"]
+        I1["[BOS] + 한국어 + [SEP] + 영어 + [EOS]"]
+    end
+
+    subgraph EMBED["임베딩 레이어"]
+        I1 --> TE[Token Embedding<br/>nn.Embedding<br/>vocab_size × d_model]
+        I1 --> PE["Positional Embedding<br/>nn.Embedding<br/>max_len × d_model<br/>(학습 가능)"]
+        TE --> ADD((+))
+        PE --> ADD
+        ADD --> DO1[Dropout]
+    end
+
+    subgraph BLOCKS["GPT Blocks × 6"]
+        DO1 --> BLK1
+
+        subgraph BLK1["GPT Block 1"]
+            SA1["Multi-Head Self-Attention<br/>n_heads=8, d_k=64"] --> LN1[LayerNorm + Residual]
+            LN1 --> FF1["FFN: Linear → GELU → Linear"]
+            FF1 --> LN2[LayerNorm + Residual]
+        end
+
+        BLK1 --> BLK2["GPT Block 2"]
+        BLK2 --> DOTS[". . ."]
+        DOTS --> BLK6["GPT Block 6"]
+    end
+
+    subgraph OUTPUT["출력"]
+        BLK6 --> FC[Linear<br/>d_model → vocab_size]
+        FC --> LOGITS["출력 로짓<br/>(B, T, vocab_size)"]
+    end
+
+    subgraph MASK["Look-ahead Mask"]
+        direction LR
+        M1["1 0 0 0<br/>1 1 0 0<br/>1 1 1 0<br/>1 1 1 1"]
+        M2["미래 토큰<br/>참조 방지"]
+    end
+
+    MASK -.-> SA1
+
+    style INPUT fill:#e3f2fd,stroke:#1565c0
+    style EMBED fill:#fff3e0,stroke:#e65100
+    style BLOCKS fill:#e8f5e9,stroke:#2e7d32
+    style OUTPUT fill:#fce4ec,stroke:#c2185b
+    style MASK fill:#f3e5f5,stroke:#7b1fa2
+    style BLK1 fill:#e0f2f1,stroke:#00695c

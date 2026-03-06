@@ -1,0 +1,59 @@
+%% GPT-1 번역기 전체 프로세스 흐름도
+%% 이 파일은 Mermaid 다이어그램입니다.
+%% VSCode Mermaid 확장 또는 https://mermaid.live 에서 확인 가능
+
+flowchart TB
+    subgraph DATA["1. 데이터 준비"]
+        A[한영 병렬 코퍼스 다운로드<br/>94,123쌍] --> B[중복 데이터 제거<br/>78,941쌍]
+        B --> C[텍스트 정제<br/>소문자, 특수문자 처리]
+    end
+
+    subgraph TOKEN["2. 토큰화"]
+        C --> D[통합 코퍼스 생성<br/>한국어 + 영어]
+        D --> E[SentencePiece 토크나이저 학습<br/>vocab_size: 25,000<br/>+ SEP 토큰 추가]
+        E --> F[토큰 ID 변환]
+    end
+
+    subgraph PREPROCESS["3. GPT-1 전처리"]
+        F --> G["시퀀스 연결<br/>[BOS] + 한국어 + [SEP] + 영어 + [EOS]"]
+        G --> H[길이 필터링<br/>MAX_LEN=100 이하]
+        H --> I[패딩 처리<br/>PAD_ID=0]
+    end
+
+    subgraph MODEL["4. GPT-1 모델"]
+        I --> J[Token Embedding<br/>nn.Embedding]
+        J --> K["Positional Embedding<br/>(학습 가능, 기존 sin/cos 대체)"]
+        K --> L[GPT Block × 6]
+
+        subgraph BLOCK["GPT Block 내부"]
+            direction TB
+            L1["Masked Self-Attention<br/>(Look-ahead Mask)<br/>Cross-Attention 제거됨"] --> L2["Feed Forward Network<br/>(GELU 활성화, ReLU 대체)"]
+        end
+
+        L --> M[Linear Output Layer<br/>d_model → vocab_size]
+    end
+
+    subgraph TRAIN["5. 학습"]
+        M --> N["Cross Entropy Loss<br/>다음 토큰 예측<br/>ignore_index=PAD"]
+        N --> O["Adam Optimizer<br/>β1=0.9, β2=0.98<br/>+ Warmup Scheduler"]
+        O --> P{에폭 완료?}
+        P -->|No| I
+        P -->|Yes| Q[학습 완료]
+    end
+
+    subgraph INFER["6. 추론 (번역)"]
+        Q --> R["입력 구성<br/>[BOS] + 한국어 + [SEP]"]
+        R --> S["토큰 생성<br/>Autoregressive Decoding"]
+        S --> T{EOS 생성?}
+        T -->|No| S
+        T -->|Yes| U["SEP 이후 토큰 추출<br/>→ 번역 결과"]
+    end
+
+    %% 스타일 정의
+    style DATA fill:#e1f5fe,stroke:#01579b
+    style TOKEN fill:#fff3e0,stroke:#e65100
+    style PREPROCESS fill:#f3e5f5,stroke:#7b1fa2
+    style MODEL fill:#e8f5e9,stroke:#2e7d32
+    style TRAIN fill:#fce4ec,stroke:#c2185b
+    style INFER fill:#fff8e1,stroke:#f57f17
+    style BLOCK fill:#e0f2f1,stroke:#00695c
